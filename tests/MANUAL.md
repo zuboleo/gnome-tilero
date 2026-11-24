@@ -56,3 +56,11 @@ Not executed in the build environment. Test with all other tilers disabled and W
 - At widths 1, 2, 3 and 4 inspect dark client edge and outline on Chromium/PWA and native GNOME. Check zero and 8 logical pixel gaps and no layout changes on focus switch. Disable Active Hint to remove reserve.
 - Verify icon color matches other symbolic indicators and opacity animation runs only on layout events. Respect disabled animation settings.
 - Repeat monitor transfer 2+2 → 1+3, workspace transfer, modal dialogs, minimization and maximization. Actual compositor behavior is not covered by Node tests.
+
+## Production submission preview
+
+- [ ] Install the EGO preview on GNOME 50; confirm no Reload Extension menu or debug switch. Repeat on GNOME 51 before declaring support.
+- [ ] Enable/disable 20 times, including during an active grab, an animation and pending window admission. Check journal, shortcuts, panel icon, hint, and native edge-tiling restoration.
+- [ ] Open and close preferences repeatedly; check for signal warnings.
+- [ ] Run the existing monitor/workspace/dialog/restore acceptance tests in both sessions. Check idle memory and CPU before and after repeated enable/disable.
+- [ ] Inspect ZIP: only one runtime, standard entry point, no updater or tools, required XML and compiled schema. Confirm maintainer license approval before submission.

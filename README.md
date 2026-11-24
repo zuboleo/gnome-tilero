@@ -84,6 +84,14 @@ Change or disable in preferences. Avoid GNOME or other extension shortcut confli
 
 See `tests/MANUAL.md`. Known limitations: no hotplug recovery or monitor connector persistence; no animation of client resizing; no custom rounding of actual application windows. Application classification depends on Mutter metadata; apps with malformed transient metadata may require ignore-list entries. Real Wayland asynchronous geometry, focus overlay stacking, drag behavior, and preferences must be verified on GNOME 50 and 51.
 
+## GNOME Extensions submission preview
+
+`make pack-production` creates `dist/tilero-<version>.ego.zip` with a synchronous GNOME entry point, the active runtime, preferences, icons, schema and license. No updater, runtime manifest, tests or build scripts are shipped. Reload and detailed diagnostics are development-only. The preview declares GNOME 50 by default; after validating GNOME 51, build with `python3 tools/pack-production.py --shell-version 50 --shell-version 51`. Do not upload until the acceptance checklist and source review are complete. The development and production packages share a UUID and cannot be enabled side by side.
+
+## License
+
+Proposed: GPL-2.0-or-later (see [LICENSE](LICENSE)); maintainer approval required before publication.
+
 ## Source modules
 
 - `extension.js`: stable GJS bootstrap and hot reload.

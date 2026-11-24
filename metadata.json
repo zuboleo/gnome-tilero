@@ -8,5 +8,6 @@
   ],
   "version": 9,
   "version-name": "0.1.9-alpha",
-  "settings-schema": "org.gnome.shell.extensions.tilero"
+  "settings-schema": "org.gnome.shell.extensions.tilero",
+  "url": "https://github.com/zuboleo/gnome-tilero"
 }
