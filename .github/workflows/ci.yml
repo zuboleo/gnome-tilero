@@ -21,8 +21,15 @@ jobs:
         run: make test
       - name: Build extension
         run: make pack
+      - name: Build EGO preview
+        run: make pack-production
       - uses: actions/upload-artifact@v4
         with:
           name: tilero-shell-extension
           path: dist/*.shell-extension.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tilero-ego-preview
+          path: dist/*.ego.zip
           if-no-files-found: error

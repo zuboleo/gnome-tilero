@@ -1,10 +1,35 @@
 # Changelog
 
+## 0.1.13-alpha — bounded Active Hint (unreleased)
+
+- Clamp the focus outline to the actual monitor's work area, including maximized and partially offscreen windows. Keep the normal outward offset on unaffected edges.
+- Refresh the hint when work areas or the focused window's actual monitor change. Hide it if the monitor or visible rectangle is invalid.
+- Leave window geometry, layout gaps, and popup stacking unchanged.
+
+## 0.1.12-alpha — remove startup smoothing (unreleased)
+
+- Remove the experimental gradient startup cover, its setting, timers and dedicated tests. Live testing showed that the cover appeared after application flicker and made startup feel worse.
+- Restore the 0.1.10-alpha runtime and settings schema; retain the popup stacking fix, cleanup hardening and standard GNOME entry point.
+- Existing window movement and panel icon animations remain unchanged.
+
+## 0.1.11-alpha — gradient startup smoothing (unreleased)
+
+- Optional gradient cover for newly tiled windows; theme-aware palette, 400 ms hold, 150 ms fade, 700 ms failsafe. Does not alter client opacity or layout.
+- Cancel on popup/dialog, workspace change, minimize, drag, disable, or animation preference change.
+- Actual application readiness and first visible frame are not guaranteed; verify Teams PWA on GNOME 50/51.
+
+## 0.1.10-alpha — publication preparation (unreleased)
+
+- Remove experimental Hot Reload entirely; standard GNOME install/update only.
+- Simplify runtime paths and build a single extension with two metadata profiles.
+- Restack the Active Hint below its owner when a mapped popup overlaps it; restore the normal layer after the popup closes.
+- Harden cleanup and add lifecycle tests. Live GNOME validation pending.
+
 ## 0.1.9-alpha — Tilero rename
 
 - Rename Auto Tiling to Tilero, with UUID `tilero@zuboleo.github.io`.
 - Rename GSettings schema and path, CSS classes, logs, package artifacts and documentation.
-- Existing preferences can be copied with `dconf`; see README.
+- Existing preferences could be copied with `dconf`.
 - Install normally once before using Tilero hot reload. No layout or window-management behavior changes.
 
 ## 0.1.8-alpha — Hot Reload and appearance

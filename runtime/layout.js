@@ -71,4 +71,30 @@ export function effectiveGaps(outer,inner,width,enabled=true) {
     const offset=enabled?hintOffset(width):0;
     return {outer:outer+offset,inner:inner+offset,offset};
 }
-export function hintRect(frame,width) {const o=hintOffset(width);return {x:frame.x-o,y:frame.y-o,width:frame.width+2*o,height:frame.height+2*o};}
+// Keep the focus outline inside the actual monitor's work area. Clamp each
+// edge independently so an unaffected side retains its normal outward offset.
+export function hintRect(frame, width, area = null) {
+    const o = hintOffset(width);
+    const expanded = {
+        x: frame.x - o, y: frame.y - o,
+        width: frame.width + 2 * o, height: frame.height + 2 * o,
+    };
+    if (!area)
+        return expanded;
+    const valid = r => [r.x, r.y, r.width, r.height].every(Number.isFinite) &&
+        r.width > 0 && r.height > 0;
+    if (!valid(frame) || !valid(area))
+        return null;
+    // Do not draw a stray border when only the offset intersects the monitor.
+    if (frame.x >= area.x + area.width || frame.x + frame.width <= area.x ||
+        frame.y >= area.y + area.height || frame.y + frame.height <= area.y)
+        return null;
+    const x = Math.max(expanded.x, area.x);
+    const y = Math.max(expanded.y, area.y);
+    const right = Math.min(expanded.x + expanded.width, area.x + area.width);
+    const bottom = Math.min(expanded.y + expanded.height, area.y + area.height);
+    // A border thicker than the remaining visible region has no useful outline.
+    if (right - x <= 2 * width || bottom - y <= 2 * width)
+        return null;
+    return {x, y, width: right - x, height: bottom - y};
+}

@@ -32,7 +32,7 @@ export default class TileroPreferences extends ExtensionPreferences {
         const manual=new Adw.EntryRow({title:'Application ID or WM_CLASS'});addGroup.add(manual);const manualBtn=new Gtk.Button({label:'Add',valign:Gtk.Align.CENTER});manual.add_suffix(manualBtn);const addManual=()=>{add(manual.text);manual.text='';};manualBtn.connect('clicked',addManual);manual.connect('entry-activated',addManual);
         const exclusions=new Adw.PreferencesGroup({title:'Excluded applications'});ignorePage.add(exclusions);let rows=[];
         const refresh=()=>{for(const r of rows)exclusions.remove(r);rows=[];for(const id of s.get_strv('ignored-apps')){const app=apps.find(a=>a.get_id()?.toLowerCase()===id);const row=new Adw.ActionRow({title:app?.get_display_name()??id,subtitle:app?id:''});if(app?.get_icon())row.add_prefix(new Gtk.Image({gicon:app.get_icon(),pixel_size:28}));const remove=new Gtk.Button({icon_name:'edit-delete-symbolic',tooltip_text:'Remove exception',valign:Gtk.Align.CENTER});remove.connect('clicked',()=>s.set_strv('ignored-apps',s.get_strv('ignored-apps').filter(x=>x!==id)));row.add_suffix(remove);exclusions.add(row);rows.push(row);}};
-        const changed=s.connect('changed::ignored-apps',refresh);window.connect('close-request',()=>{s.disconnect(changed);return false;});refresh();
+        let changed=s.connect('changed::ignored-apps',refresh);window.connect('close-request',()=>{if(changed){s.disconnect(changed);changed=0;}return false;});refresh();
         const shortcutPage=new Adw.PreferencesPage({title:'Keyboard Shortcuts',icon_name:'preferences-desktop-keyboard-shortcuts-symbolic'});window.add(shortcutPage);
         const shortcuts=new Adw.PreferencesGroup({title:'Shortcuts',description:'Use GTK accelerator notation (for example <Super><Alt>Left). Clear a field to disable that shortcut. Avoid existing GNOME shortcuts.'});shortcutPage.add(shortcuts);
         for(const [key,title] of [['toggle-tiling','Toggle Automatic Tiling'],['toggle-floating','Toggle Floating'],['swap-left','Move / swap left'],['swap-right','Move / swap right'],['swap-up','Move / swap up'],['swap-down','Move / swap down']]){
@@ -42,13 +42,12 @@ export default class TileroPreferences extends ExtensionPreferences {
         const aboutPage=new Adw.PreferencesPage({title:'About',icon_name:'help-about-symbolic'});window.add(aboutPage);
         const about=new Adw.PreferencesGroup({title:'Tilero'});aboutPage.add(about);
         const info=(title,value)=>{const row=new Adw.ActionRow({title,subtitle:String(value)});about.add(row);};
-        let release;try{const [ok,bytes]=Gio.File.new_for_path(`${this.path}/runtime.json`).load_contents(null);if(ok)release=JSON.parse(new TextDecoder().decode(bytes));}catch{}
-        info('Installed Version',release?.version??this.metadata['version-name']??this.metadata.version);
-        info('Build',release?.build??this.metadata.version);
-        info('Running version','See Version in the top panel menu');
+        info('Version',this.metadata['version-name']??this.metadata.version);
+        if(this.metadata.version)info('Build',this.metadata.version);
         info('GNOME Shell',this.metadata['shell-version'].join(' / '));
         info('Extension ID',this.metadata.uuid);
-        const diagnostics=new Adw.PreferencesGroup({title:'Diagnostics',description:'Log monitor transfers, window IDs, application classes and geometry to the local GNOME Shell journal. No window titles or content.'});aboutPage.add(diagnostics);
+        const diagnostics=new Adw.PreferencesGroup({title:'Diagnostics',description:'Optional local monitor transfer diagnostics. No window titles or content.'});
+        aboutPage.add(diagnostics);
         toggle(diagnostics,'debug-transfers','Debug monitor transfers');
     }
 }
