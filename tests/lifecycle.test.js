@@ -12,7 +12,7 @@ function readClass(path, name, bindings) {
 
 test('disable frees all tracked resources even if one cleanup fails', () => {
     const calls = [];
-    const Runtime = readClass('../runtime/0.1.9-alpha/extension.js', 'Tilero', {
+    const Runtime = readClass('../runtime/extension.js', 'Tilero', {
         GLib: {Source: {remove(id) {
             calls.push('source:' + id);
             if (id === 1) throw Error('simulated source failure');
@@ -64,11 +64,38 @@ test('production entry point is synchronous and does not expose reload', () => {
     class Extension {
         constructor() { this.metadata = {'version-name': 'test'}; this.path = '/mock'; }
     }
-    const Entry = readClass('../production/extension.js', 'TileroExtension', {Extension, Runtime});
+    const Entry = readClass('../extension.js', 'TileroExtension', {Extension, Runtime});
     const extension = new Entry();
     assert.equal(extension.enable(), undefined);
     extension.enable();
     assert.equal(extension.disable(), undefined);
     extension.disable();
     assert.deepEqual(events, [['construct', 'test', '/mock/runtime'], 'enable', 'disable']);
+});
+
+test('overlapping mapped popup is above the focus hint; close restores normal layer', () => {
+    const calls = [];
+    const group = {
+        set_child_below_sibling(h, a) { calls.push(['below', h, a]); },
+        set_child_above_sibling(h, a) { calls.push(['above', h, a]); },
+    };
+    const owner = {mapped: true};
+    const popup = {mapped: true, meta_window: {
+        get_window_type: () => 3, is_override_redirect: () => false,
+        get_frame_rect: () => ({x: 80, y: 20, width: 50, height: 50}),
+    }};
+    const Meta = {WindowType: {NORMAL: 0, POPUP_MENU: 3}};
+    const Runtime = readClass('../runtime/extension.js', 'Tilero', {
+        Meta, global: {window_group: group, get_window_actors: () => [owner, popup]},
+    });
+    const runtime = new Runtime();
+    runtime._hint = {};
+    const frame = {x: 0, y: 0, width: 100, height: 100};
+    runtime._stackHint(owner, frame);
+    popup.mapped = false;
+    runtime._stackHint(owner, frame);
+    popup.mapped = true;
+    popup.meta_window.get_frame_rect = () => ({x: 200, y: 200, width: 10, height: 10});
+    runtime._stackHint(owner, frame);
+    assert.deepEqual(calls.map(c => c[0]), ['below', 'above', 'above']);
 });

@@ -1,10 +1,17 @@
 # Changelog
 
+## 0.1.10-alpha — publication preparation (unreleased)
+
+- Remove experimental Hot Reload entirely; standard GNOME install/update only.
+- Simplify runtime paths and build a single extension with two metadata profiles.
+- Restack the Active Hint below its owner when a mapped popup overlaps it; restore the normal layer after the popup closes.
+- Harden cleanup and add lifecycle tests. Live GNOME validation pending.
+
 ## 0.1.9-alpha — Tilero rename
 
 - Rename Auto Tiling to Tilero, with UUID `tilero@zuboleo.github.io`.
 - Rename GSettings schema and path, CSS classes, logs, package artifacts and documentation.
-- Existing preferences can be copied with `dconf`; see README.
+- Existing preferences could be copied with `dconf`.
 - Install normally once before using Tilero hot reload. No layout or window-management behavior changes.
 
 ## 0.1.8-alpha — Hot Reload and appearance

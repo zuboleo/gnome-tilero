@@ -5,7 +5,7 @@ import * as layout from '../layout.js';
 
 // Exercise actual extension methods with a deterministic Mutter stand-in.
 // This is not a compositor integration test; geometry commits here are synchronous.
-const source=readFileSync(new URL('../runtime/0.1.9-alpha/extension.js',import.meta.url),'utf8')
+const source=readFileSync(new URL('../runtime/extension.js',import.meta.url),'utf8')
     .replace(/^import .*;\s*$/gm,'').replace('export default class Tilero','class Tilero');
 const Meta={GrabOp:{MOVING:1,MOVING_UNCONSTRAINED:1025,KEYBOARD_MOVING:257,RESIZING_E:8193}};
 const geometry=[{x:0,y:0,width:1920,height:1080},{x:1920,y:0,width:1920,height:1080}];

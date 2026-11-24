@@ -15,12 +15,11 @@ export default class Tilero {
     constructor(host, release, path) {this._host=host;this.metadata={...host?.metadata,'version-name':release?.version,version:release?.build};this.path=path;this.uuid=host?.uuid;}
     getSettings(){return this._host.getSettings();}
     openPreferences(){return this._host.openPreferences();}
-    snapshot(){return {paused:[...this._paused],groups:[...this._groups.values()].flatMap(m=>[...m.values()].map(g=>({ws:g.ws,m:g.m,ratios:{...g.ratios},items:g.items.map(r=>r.w)}))),records:[...this._records.values()].map(r=>({w:r.w,mode:r.mode,saved:r.saved,workspace:r.workspace}))};}
-    enable(snapshot=null) {
+    enable() {
         this._settings=this.getSettings(); this._tracker=Shell.WindowTracker.get_default();
         this._records=new Map(); this._groups=new Map(); this._paused=new Set();
         this._signals=[]; this._sources=new Set(); this._dirty=new Set(); this._keys=[]; this._animations=new Map();
-        this._alive=true; this._nativeEdge=null; this._grab=null; this._lastFocus=null; this._flushId=0; this._pulseId=0;
+        this._alive=true; this._nativeEdge=null; this._grab=null; this._lastFocus=null; this._flushId=0; this._pulseId=0; this._hintRestackId=0;
         try {
             this._hint=new St.Widget({style_class:'tilero-hint',reactive:false,can_focus:false,visible:false});
             global.window_group.add_child(this._hint);
@@ -29,6 +28,9 @@ export default class Tilero {
             console.log(`[Tilero] enabled ${this.metadata['version-name']}`);
             this._connect(global.display,'window-created',(_d,w)=>this._watch(w,false));
             this._connect(global.display,'notify::focus-window',()=>this._focusChanged());
+            this._connect(global.display,'restacked',()=>this._queueHintRestack());
+            this._connect(global.window_group,'child-added',()=>this._queueHintRestack());
+            this._connect(global.window_group,'child-removed',()=>this._queueHintRestack());
             this._connect(global.display,'grab-op-begin',(_d,w,op)=>this._grabBegin(w,op));
             this._connect(global.display,'grab-op-end',(_d,w)=>this._grabEnd(w));
             this._connect(global.display,'window-entered-monitor',(_d,_m,w)=>this._monitorChanged(w));
@@ -43,7 +45,7 @@ export default class Tilero {
             KEYS.forEach((key,i)=>{Main.wm.addKeybinding(key,this._settings,Meta.KeyBindingFlags.NONE,Shell.ActionMode.NORMAL,actions[i]);this._keys.push(key);});
             // One initial pass, separately for each actual workspace. Stable sequence = opening order.
             const windows=global.get_window_actors().map(a=>a.meta_window).filter(Boolean).sort((a,b)=>a.get_stable_sequence()-b.get_stable_sequence());
-            if(snapshot)this._restoreSnapshot(snapshot,windows);else for(const w of windows)this._watch(w,true);
+            for(const w of windows)this._watch(w,true);
             this._focusChanged();
         } catch(e) {this.disable();throw e;}
     }
@@ -63,6 +65,7 @@ export default class Tilero {
         this._sources?.clear();
         this._flushId = 0;
         this._pulseId = 0;
+        this._hintRestackId = 0;
 
         for (const key of this._keys ?? [])
             cleanup('keybinding', () => Main.wm.removeKeybinding(key));
@@ -113,7 +116,7 @@ export default class Tilero {
         try{if(!saved.settings.get_boolean('edge-tiling')){if(saved.previous)saved.settings.set_value('edge-tiling',saved.previous);else saved.settings.reset('edge-tiling');}}catch(e){console.error('[Tilero] restore edge-tiling',e);}
     }
     _trace(event,r=null,extra={}){
-        if(typeof this._host?.reload !== 'function' || !this._settings?.get_boolean?.('debug-transfers'))return;
+        if(!this._settings?.get_boolean?.('debug-transfers'))return;
         try{const identify=x=>({id:x.w.get_stable_sequence?.(),app:x.w.get_wm_class?.(),owner:x.g?.m??null,actual:x.w.get_monitor(),mode:x.mode,max:x.w.is_maximized(),fullscreen:x.w.is_fullscreen(),minSize:x.w.get_min_size?.(),frame:rect(x.w.get_frame_rect())});
         console.log(`[Tilero] ${event} ${JSON.stringify({window:r?identify(r):null,...extra})}`);}catch(e){console.warn('[Tilero] diagnostics unavailable',e);}
     }
@@ -150,34 +153,22 @@ export default class Tilero {
         if(items.length===3){for(const i of [0,2]){const proposed=[...items];[proposed[i],proposed[1]]=[proposed[1],proposed[i]];if(this._canUse(g,proposed))return proposed;}}
         return null;}
     _clearPlacement(r){this._cancel(r.verifyId);r.verifyId=0;this._cancel(r.monitorId);r.monitorId=0;r.target=null;}
-    _restoreSnapshot(snapshot,windows){
-        const live=new Set(windows), saved=new Map(snapshot.records.map(r=>[r.w,r]));
-        const workspaces=new Set(Array.from({length:global.workspace_manager.n_workspaces},(_,i)=>global.workspace_manager.get_workspace_by_index(i)));
-        for(const ws of snapshot.paused)if(workspaces.has(ws))this._paused.add(ws);
-        for(const w of windows)this._watch(w,true,true);
-        for(const w of windows){const r=this._records.get(w),prev=saved.get(w);if(prev&&prev.workspace===w.get_workspace()){r.mode=prev.mode==='tiled'?'pending':prev.mode;r.saved=prev.saved;}}
-        for(const old of snapshot.groups){if(!workspaces.has(old.ws)||!this._order(old.ws).includes(old.m))continue;const g=this._group(old.ws,old.m);g.ratios=old.ratios;
-            for(const w of old.items){if(!live.has(w)||w.get_workspace()!==old.ws||!this._eligible(w)||w.minimized)continue;const r=this._records.get(w);g.items.push(r);r.g=g;r.mode='tiled';}
-            this._mark(g);}
-        for(const r of this._records.values())if(r.mode==='pending'&&!r.g)this._admit(r);
-        this._updatePanel();
-    }
-    _watch(w,existing,defer=false){if(!w||this._records.has(w))return;
+    _watch(w,existing){if(!w||this._records.has(w))return;
         const r={w,workspace:w.get_workspace(),signals:[],g:null,mode:'pending',saved:null,target:null,readyId:0,verifyId:0,monitorId:0,stateId:0};this._records.set(w,r);
         this._connect(w,'unmanaged',()=>this._forget(r),r);
         this._connect(w,'workspace-changed',()=>this._workspaceChanged(r),r);
         for(const s of ['notify::minimized','notify::fullscreen','notify::maximized-horizontally','notify::maximized-vertically'])this._connect(w,s,()=>this._queueState(r),r);
-        for(const s of ['position-changed','size-changed'])this._connect(w,s,()=>{if(this._focusRoot()===w)this._updateHint();},r);
+        for(const s of ['position-changed','size-changed'])this._connect(w,s,()=>{if(this._focusRoot()===w)this._updateHint();else if(this._isPopup(w))this._queueHintRestack();},r);
         for(const s of ['notify::window-type','notify::skip-taskbar','notify::wm-class','notify::on-all-workspaces','notify::transient-for'])this._connect(w,s,()=>this._queueState(r),r);
-        if(existing){if(!defer)this._admit(r);return;}
+        if(existing){this._admit(r);return;}
         // Waiting for the mapped actor avoids classifying an unfinished transient as a normal window.
         let attempts=0;const wait=()=>{if(!this._records.has(w)||r.mode!=='pending')return;const actor=w.get_compositor_private();
-            if(actor&&actor.mapped){r.readyId=this._later(80,()=>this._admit(r));}
+            if(actor&&actor.mapped){r.readyId=this._later(80,()=>this._admit(r));if(this._isPopup(w))this._queueHintRestack();}
             else if(++attempts<25)r.readyId=this._later(40,wait);
             else this._admit(r);};r.readyId=this._later(40,wait);
     }
     _admit(r){r.readyId=0;if(r.mode!=='pending')return;const w=r.w;r.workspace=w.get_workspace();
-        if(!this._eligible(w)){r.mode='excluded';return;}
+        if(!this._eligible(w)){r.mode='excluded';this._queueHintRestack();return;}
         if(w.minimized){r.mode='minimized';return;}
         if(!this._active(w.get_workspace())){r.mode='inactive';return;}
         // Real fullscreen (F11/video) remains native. A newly mapped window
@@ -380,16 +371,49 @@ export default class Tilero {
         this._updateHint();}
     _focusRoot(){let w=global.display.focus_window;const seen=new Set();while(w&&!seen.has(w)){seen.add(w);const p=w.get_transient_for();if(!p)break;w=p;}return w;}
     _focusChanged(){const w=this._focusRoot();if(w&&this._normal(w))this._lastFocus=w;this._updateHint();}
+    _queueHintRestack() {
+        if (this._hintRestackId || !this._alive)
+            return;
+        // Mutter may emit restacked before the actor stack has settled.
+        this._hintRestackId = this._later(0, () => {
+            this._hintRestackId = 0;
+            this._updateHint();
+        });
+    }
+    _isPopup(w) {
+        const type = w.get_window_type();
+        return w.is_override_redirect() || [
+            Meta.WindowType.MENU, Meta.WindowType.DROPDOWN_MENU,
+            Meta.WindowType.POPUP_MENU, Meta.WindowType.TOOLTIP,
+            Meta.WindowType.COMBO,
+        ].filter(t => t !== undefined).includes(type);
+    }
+    _stackHint(actor, frame) {
+        // Keep the normal edge-overlapping hint; suppress its overlap with
+        // mapped menus by lowering it under the owner while a popup crosses it.
+        const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x &&
+            a.y < b.y + b.height && a.y + a.height > b.y;
+        const popup = global.get_window_actors().some(other => {
+            const w = other.meta_window;
+            return other !== actor && other.mapped && w && this._isPopup(w) &&
+                overlaps(frame, w.get_frame_rect());
+        });
+        const group = global.window_group;
+        if (popup)
+            group.set_child_below_sibling(this._hint, actor);
+        else
+            group.set_child_above_sibling(this._hint, actor);
+    }
     _updateHint(){if(!this._hint)return;const w=this._focusRoot(),r=this._records.get(w);if(!w||!this._normal(w)||!this._active(w.get_workspace())||!this._settings.get_boolean('active-hint')||Main.overview.visible||Main.sessionMode.isLocked||w.minimized||w.is_fullscreen()||(!r?.g&&!this._settings.get_boolean('hint-floating'))||!w.showing_on_its_workspace()){this._hint.hide();return;}
         const a=w.get_compositor_private();if(!a||a.get_parent()!==global.window_group){this._hint.hide();return;}
         const t=w.get_frame_rect(),width=this._settings.get_int('hint-width'),radius=this._settings.get_int('hint-radius'),c=this._settings.get_string('hint-color');const color=/^#[0-9a-f]{6}$/i.test(c)?`border-color:${c};`:'';
         // Extend outward; the remaining stroke overlaps the dark client edge.
-        this._hint.set_style(`border-width:${width}px;border-radius:${radius}px;${color}`);const h=hintRect(t,width);this._hint.set_position(h.x,h.y);this._hint.set_size(h.width,h.height);global.window_group.set_child_above_sibling(this._hint,a);this._hint.show();
+        this._hint.set_style(`border-width:${width}px;border-radius:${radius}px;${color}`);const h=hintRect(t,width);this._hint.set_position(h.x,h.y);this._hint.set_size(h.width,h.height);this._stackHint(a,h);this._hint.show();
     }
     _buildPanel(){this._panel=new PanelMenu.Button(0,'Tilero',false);this._icon=new St.Icon({style_class:'system-status-icon'});this._panel.add_child(this._icon);this._setIcon(0);
         this._globalSwitch=new PopupMenu.PopupSwitchMenuItem('Auto tiling',this._enabled());this._connect(this._globalSwitch,'toggled',(_o,v)=>this._settings.set_boolean('auto-tiling',v));this._panel.menu.addMenuItem(this._globalSwitch);
         this._workspaceSwitch=new PopupMenu.PopupSwitchMenuItem('Tile this workspace',true);this._connect(this._workspaceSwitch,'toggled',(_o,v)=>{const ws=global.workspace_manager.get_active_workspace();if(v){this._paused.delete(ws);this._resume(ws);}else this._paused.add(ws);this._updateHint();});this._panel.menu.addMenuItem(this._workspaceSwitch);
-        this._panel.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());this._panel.menu.addAction('Toggle floating window',()=>this._toggleFloating(this._lastFocus));this._panel.menu.addAction('Ignore active application',()=>{const w=this._lastFocus;if(!w)return;const id=this._ids(w)[0];if(id){const list=this._settings.get_strv('ignored-apps');if(!list.includes(id))this._settings.set_strv('ignored-apps',[...list,id]);}});this._panel.menu.addAction('Settings',()=>this.openPreferences());if(typeof this._host.reload === 'function')this._panel.menu.addAction('Reload Extension',()=>this._host.reload());const versionRow=new PopupMenu.PopupMenuItem(`Version ${this.metadata['version-name']}`,{reactive:false,can_focus:false});this._panel.menu.addMenuItem(versionRow);Main.panel.addToStatusArea(this.uuid,this._panel);this._updatePanel();}
+        this._panel.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());this._panel.menu.addAction('Toggle floating window',()=>this._toggleFloating(this._lastFocus));this._panel.menu.addAction('Ignore active application',()=>{const w=this._lastFocus;if(!w)return;const id=this._ids(w)[0];if(id){const list=this._settings.get_strv('ignored-apps');if(!list.includes(id))this._settings.set_strv('ignored-apps',[...list,id]);}});this._panel.menu.addAction('Settings',()=>this.openPreferences());const versionRow=new PopupMenu.PopupMenuItem(`Version ${this.metadata['version-name']}`,{reactive:false,can_focus:false});this._panel.menu.addMenuItem(versionRow);Main.panel.addToStatusArea(this.uuid,this._panel);this._updatePanel();}
     _setIcon(i){if(this._icon){this._icon.gicon=Gio.FileIcon.new(Gio.File.new_for_path(`${this.path}/icons/sweep-${i}-symbolic.svg`));}}
     _pulse(_count){if(!this._motion())return;this._cancel(this._pulseId);let frame=1;const next=()=>{if(!this._icon)return;this._setIcon(frame++);if(frame<=12)this._pulseId=this._later(38,next);else{this._pulseId=0;this._setIcon(0);}};next();}
     _updatePanel(){if(!this._panel)return;this._globalSwitch.setToggleState(this._enabled());this._workspaceSwitch.setToggleState(!this._paused.has(global.workspace_manager.get_active_workspace()));if(this._enabled())this._icon.remove_style_class_name('tilero-indicator-off');else this._icon.add_style_class_name('tilero-indicator-off');}

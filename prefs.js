@@ -42,16 +42,12 @@ export default class TileroPreferences extends ExtensionPreferences {
         const aboutPage=new Adw.PreferencesPage({title:'About',icon_name:'help-about-symbolic'});window.add(aboutPage);
         const about=new Adw.PreferencesGroup({title:'Tilero'});aboutPage.add(about);
         const info=(title,value)=>{const row=new Adw.ActionRow({title,subtitle:String(value)});about.add(row);};
-        let release;try{const [ok,bytes]=Gio.File.new_for_path(`${this.path}/runtime.json`).load_contents(null);if(ok)release=JSON.parse(new TextDecoder().decode(bytes));}catch{}
-        info('Installed Version',release?.version??this.metadata['version-name']??this.metadata.version);
-        if(release?.build??this.metadata.version)info('Build',release?.build??this.metadata.version);
-        info('Running version','See Version in the top panel menu');
+        info('Version',this.metadata['version-name']??this.metadata.version);
+        if(this.metadata.version)info('Build',this.metadata.version);
         info('GNOME Shell',this.metadata['shell-version'].join(' / '));
         info('Extension ID',this.metadata.uuid);
-        if(release){
-            const diagnostics=new Adw.PreferencesGroup({title:'Diagnostics',description:'Log monitor transfers, window IDs, application classes and geometry to the local GNOME Shell journal. No window titles or content.'});
-            aboutPage.add(diagnostics);
-            toggle(diagnostics,'debug-transfers','Debug monitor transfers');
-        }
+        const diagnostics=new Adw.PreferencesGroup({title:'Diagnostics',description:'Optional local monitor transfer diagnostics. No window titles or content.'});
+        aboutPage.add(diagnostics);
+        toggle(diagnostics,'debug-transfers','Debug monitor transfers');
     }
 }
