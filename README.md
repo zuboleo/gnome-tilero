@@ -4,23 +4,6 @@ Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current versi
 
 **Alpha warning:** the geometry and allocator tests pass, JavaScript syntax and GSettings schema have been validated. This release has not been independently validated in a live GNOME Shell 50 / 51 session. Earlier versions have been tested by the user on GNOME 50.6, with outstanding monitor-transfer issues; see the manual checklist. Save work and disable other tilers before enabling it. No GNOME session changes are made by installation itself.
 
-## Migrate from Auto Tiling 0.1.8-alpha
-
-Tilero is the renamed project, with a new extension UUID and GSettings path.
-It is a separate extension from GNOME's point of view. Disable the old extension
-before enabling Tilero. To copy existing preferences (optional, before enabling Tilero):
-
-```sh
-gnome-extensions disable auto-tiling@local.dev
-dconf dump /org/gnome/shell/extensions/auto-tiling/ > ~/auto-tiling-settings.ini
-dconf load /org/gnome/shell/extensions/tilero/ < ~/auto-tiling-settings.ini
-```
-
-Install Tilero as described below. After confirming it works, remove the old
-extension with `gnome-extensions uninstall auto-tiling@local.dev`.
-The old runtime updater cannot install this renamed release. A normal install
-and session restart are required once. The tiling algorithm is unchanged.
-
 ## Install on Fedora
 
 Download the matching `.shell-extension.zip` from a published GitHub release, or build it locally with `make pack`.
