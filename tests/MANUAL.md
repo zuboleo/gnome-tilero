@@ -49,9 +49,9 @@ Not executed in the build environment. Test with all other tilers disabled and W
 - Close a maximized normal app, then reopen it. It should tile if capacity and minimum size permit. Native F11 fullscreen must remain untouched.
 - Enable About → Debug monitor transfers; record layout-plan, grab-end, transfer-after, apply, verify and transfer-rejected events if a scenario fails.
 
-## 0.1.8 acceptance
+## 0.1.9 acceptance
 
-- Install once normally and log back in; About shows 0.1.8-alpha, panel menu shows running 0.1.8-alpha.
+- Install once normally and log back in; About shows 0.1.9-alpha, panel menu shows running 0.1.9-alpha.
 - Stage a subsequent compatible build with update-runtime.py. Before Reload Extension, panel shows old version; after Reload Extension it shows new. No logout, no duplicate menu or hint, no lost shortcuts; tiled/floating membership, workspace and split ratios retained. If the runtime is invalid the previous version remains operational when rollback succeeds.
 - At widths 1, 2, 3 and 4 inspect dark client edge and outline on Chromium/PWA and native GNOME. Check zero and 8 logical pixel gaps and no layout changes on focus switch. Disable Active Hint to remove reserve.
 - Verify icon color matches other symbolic indicators and opacity animation runs only on layout events. Respect disabled animation settings.

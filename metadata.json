@@ -1,12 +1,12 @@
 {
-  "uuid": "auto-tiling@local.dev",
-  "name": "Auto Tiling",
+  "uuid": "tilero@zuboleo.github.io",
+  "name": "Tilero",
   "description": "Predictable monitor-first auto tiling, with up to four tiles per monitor and isolated workspaces.",
   "shell-version": [
     "50",
     "51"
   ],
-  "version": 8,
-  "version-name": "0.1.8-alpha",
-  "settings-schema": "org.gnome.shell.extensions.auto-tiling"
+  "version": 9,
+  "version-name": "0.1.9-alpha",
+  "settings-schema": "org.gnome.shell.extensions.tilero"
 }

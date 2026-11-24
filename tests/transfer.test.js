@@ -5,13 +5,13 @@ import * as layout from '../layout.js';
 
 // Exercise actual extension methods with a deterministic Mutter stand-in.
 // This is not a compositor integration test; geometry commits here are synchronous.
-const source=readFileSync(new URL('../runtime/0.1.8-alpha/extension.js',import.meta.url),'utf8')
-    .replace(/^import .*;\s*$/gm,'').replace('export default class AutoTiling','class AutoTiling');
+const source=readFileSync(new URL('../runtime/0.1.9-alpha/extension.js',import.meta.url),'utf8')
+    .replace(/^import .*;\s*$/gm,'').replace('export default class Tilero','class Tilero');
 const Meta={GrabOp:{MOVING:1,MOVING_UNCONSTRAINED:1025,KEYBOARD_MOVING:257,RESIZING_E:8193}};
 const geometry=[{x:0,y:0,width:1920,height:1080},{x:1920,y:0,width:1920,height:1080}];
 function fixture(){
     const mock={display:{get_monitor_geometry:m=>geometry[m],get_n_monitors:()=>2},get_pointer:()=>[...mock.pointer],pointer:[2200,400]};
-    const Klass=new Function('Extension','Meta','global','GLib',...Object.keys(layout),`${source}\nreturn AutoTiling;`)(class {},Meta,mock,{get_monotonic_time:()=>10000000},...Object.values(layout));
+    const Klass=new Function('Extension','Meta','global','GLib',...Object.keys(layout),`${source}\nreturn Tilero;`)(class {},Meta,mock,{get_monotonic_time:()=>10000000},...Object.values(layout));
     const ext=new Klass(), ws={get_work_area_for_monitor:m=>geometry[m]}, otherWs={get_work_area_for_monitor:m=>geometry[m]};
     const pending=[],dirty=new Set();
     Object.assign(ext,{_records:new Map(),_groups:new Map(),_grab:null,_active:()=>true,_eligible:()=>true,_order:()=>[0,1],_settings:{get_int:()=>8},_mark:g=>dirty.add(g),_cancel:()=>{},_later:(_ms,fn)=>{pending.push(fn);return pending.length;},_pulse:()=>{},_updateHint:()=>{},_apply:(r,t)=>{r.w.frame={...t};r.w.monitor=r.g.m;}});

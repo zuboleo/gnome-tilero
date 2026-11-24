@@ -1,8 +1,25 @@
-# Auto Tiling
+# Tilero
 
-Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current version: **0.1.8-alpha**. No extra runtime dependencies beyond GNOME; Python 3 is used for optional hot updates.
+Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current version: **0.1.9-alpha**. No extra runtime dependencies beyond GNOME; Python 3 is used for optional hot updates.
 
 **Alpha warning:** the geometry and allocator tests pass, JavaScript syntax and GSettings schema have been validated. This release has not been independently validated in a live GNOME Shell 50 / 51 session. Earlier versions have been tested by the user on GNOME 50.6, with outstanding monitor-transfer issues; see the manual checklist. Save work and disable other tilers before enabling it. No GNOME session changes are made by installation itself.
+
+## Migrate from Auto Tiling 0.1.8-alpha
+
+Tilero is the renamed project, with a new extension UUID and GSettings path.
+It is a separate extension from GNOME's point of view. Disable the old extension
+before enabling Tilero. To copy existing preferences (optional, before enabling Tilero):
+
+```sh
+gnome-extensions disable auto-tiling@local.dev
+dconf dump /org/gnome/shell/extensions/auto-tiling/ > ~/auto-tiling-settings.ini
+dconf load /org/gnome/shell/extensions/tilero/ < ~/auto-tiling-settings.ini
+```
+
+Install Tilero as described below. After confirming it works, remove the old
+extension with `gnome-extensions uninstall auto-tiling@local.dev`.
+The old runtime updater cannot install this renamed release. A normal install
+and session restart are required once. The tiling algorithm is unchanged.
 
 ## Install on Fedora
 
@@ -10,15 +27,15 @@ Download the matching `.shell-extension.zip` from a published GitHub release, or
 
 ```sh
 gnome-shell --version
-gnome-extensions install --force ~/Downloads/auto-tiling-0.1.8-alpha.shell-extension.zip
+gnome-extensions install --force ~/Downloads/tilero-0.1.9-alpha.shell-extension.zip
 ```
 
 Log out of GNOME and log back in, then:
 
 ```sh
-gnome-extensions enable auto-tiling@local.dev
-gnome-extensions info auto-tiling@local.dev
-gnome-extensions prefs auto-tiling@local.dev
+gnome-extensions enable tilero@zuboleo.github.io
+gnome-extensions info tilero@zuboleo.github.io
+gnome-extensions prefs tilero@zuboleo.github.io
 ```
 
 In Settings → Multitasking → Multi-Monitor, select **Workspaces on all displays**. If GNOME is configured to use workspaces on the primary monitor only, this prototype intentionally tiles only the primary monitor so it does not mix workspaces with sticky secondary windows. Do not run other automatic tiling extensions concurrently.
@@ -26,15 +43,15 @@ In Settings → Multitasking → Multi-Monitor, select **Workspaces on all displ
 ## Turn off / remove
 
 ```sh
-gnome-extensions disable auto-tiling@local.dev
-gnome-extensions uninstall auto-tiling@local.dev
+gnome-extensions disable tilero@zuboleo.github.io
+gnome-extensions uninstall tilero@zuboleo.github.io
 ```
 
 Disable leaves windows in their current positions. If the shell becomes unusable, switch to a TTY (Ctrl+Alt+F3), log in, and run `gsettings set org.gnome.shell disable-user-extensions true`. Log back in. This disables all user extensions; restore the setting only after removing the problematic one.
 
 ## Development
 
-The installed source is under `~/.local/share/gnome-shell/extensions/auto-tiling@local.dev/`. For a separate source directory, clone the repository and edit the source there.
+The installed source is under `~/.local/share/gnome-shell/extensions/tilero@zuboleo.github.io/`. For a separate source directory, clone the repository and edit the source there.
 
 ```sh
 sudo dnf install git make zip glib2 nodejs python3
@@ -53,7 +70,7 @@ dbus-run-session gnome-shell --devkit --wayland
 This runs a separate Shell session, but may not expose the physical multi-monitor arrangement. Test on the real desktop after confirming basic startup. Debug log:
 
 ```sh
-journalctl --user -b -f -o cat | grep --line-buffered -Ei 'auto.tiling|gnome-shell|JS ERROR'
+journalctl --user -b -f -o cat | grep --line-buffered -Ei 'tilero|gnome-shell|JS ERROR'
 ```
 
 If logs are absent, use `journalctl -b /usr/bin/gnome-shell -f -o cat`. GNOME Looking Glass: Alt+F2, enter `lg` (Extensions tab).
@@ -101,10 +118,10 @@ API references: https://gjs.guide/extensions/ ; https://gjs.guide/extensions/upg
 
 ## Hot reload (experimental)
 
-The first installation of the 0.1.8-alpha bootstrap requires a normal session restart. For subsequent compatible releases:
+The first installation of the Tilero bootstrap requires a normal session restart. For subsequent compatible releases:
 
 ```sh
-python3 ~/.local/share/gnome-shell/extensions/auto-tiling@local.dev/update-runtime.py ~/Downloads/NEW.shell-extension.zip
+python3 ~/.local/share/gnome-shell/extensions/tilero@zuboleo.github.io/update-runtime.py ~/Downloads/NEW.shell-extension.zip
 ```
 
 Choose **Reload Extension** from the panel menu. About displays installed metadata; the panel displays the running version. Changes to the bootstrap, stylesheet or GSettings XML require normal installation and a session restart. Each runtime version must use a unique directory and must never be overwritten with different code.

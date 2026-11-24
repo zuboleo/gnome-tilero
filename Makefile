@@ -1,6 +1,6 @@
-UUID := auto-tiling@local.dev
+UUID := tilero@zuboleo.github.io
 VERSION := $(shell python3 -c 'import json; print(json.load(open("runtime.json"))["version"])')
-ZIP := dist/auto-tiling-$(VERSION).shell-extension.zip
+ZIP := dist/tilero-$(VERSION).shell-extension.zip
 .PHONY: pack test install clean
 pack:
 	glib-compile-schemas --strict schemas

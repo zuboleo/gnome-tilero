@@ -11,7 +11,7 @@ import {LIMIT, defaultRatios, monitorOrder, candidates, tiles, contains, sameRec
 
 const KEYS=['toggle-tiling','toggle-floating','swap-left','swap-right','swap-up','swap-down'];
 const rect = r => ({x:r.x,y:r.y,width:r.width,height:r.height});
-export default class AutoTiling {
+export default class Tilero {
     constructor(host, release, path) {this._host=host;this.metadata={...host?.metadata,'version-name':release?.version,version:release?.build};this.path=path;this.uuid=host?.uuid;}
     getSettings(){return this._host.getSettings();}
     openPreferences(){return this._host.openPreferences();}
@@ -22,11 +22,11 @@ export default class AutoTiling {
         this._signals=[]; this._sources=new Set(); this._dirty=new Set(); this._keys=[]; this._animations=new Map();
         this._alive=true; this._nativeEdge=null; this._grab=null; this._lastFocus=null; this._flushId=0;
         try {
-            this._hint=new St.Widget({style_class:'auto-tiling-hint',reactive:false,can_focus:false,visible:false});
+            this._hint=new St.Widget({style_class:'tilero-hint',reactive:false,can_focus:false,visible:false});
             global.window_group.add_child(this._hint);
             this._syncNativeEdge();
             this._buildPanel();
-            console.log(`[Auto Tiling] enabled ${this.metadata['version-name']}`);
+            console.log(`[Tilero] enabled ${this.metadata['version-name']}`);
             this._connect(global.display,'window-created',(_d,w)=>this._watch(w,false));
             this._connect(global.display,'notify::focus-window',()=>this._focusChanged());
             this._connect(global.display,'grab-op-begin',(_d,w,op)=>this._grabBegin(w,op));
@@ -60,8 +60,8 @@ export default class AutoTiling {
         this._records?.clear();this._groups?.clear();this._dirty?.clear();this._paused?.clear();
         this._hint=null;this._panel=null;this._settings=null;this._tracker=null;this._primaryOnly=null;this._grab=null;this._lastFocus=null;
     }
-    _connect(o,s,fn,record=null){const id=o.connect(s,(...args)=>{if(!this._alive)return;try{fn(...args);}catch(e){console.error('[Auto Tiling]',e);}});(record?record.signals:this._signals).push([o,id]);return id;}
-    _later(ms,fn){let id=0;const run=()=>{this._sources.delete(id);if(this._alive)try{fn();}catch(e){console.error('[Auto Tiling]',e);}return GLib.SOURCE_REMOVE;};id=ms?GLib.timeout_add(GLib.PRIORITY_DEFAULT,ms,run):GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE,run);this._sources.add(id);return id;}
+    _connect(o,s,fn,record=null){const id=o.connect(s,(...args)=>{if(!this._alive)return;try{fn(...args);}catch(e){console.error('[Tilero]',e);}});(record?record.signals:this._signals).push([o,id]);return id;}
+    _later(ms,fn){let id=0;const run=()=>{this._sources.delete(id);if(this._alive)try{fn();}catch(e){console.error('[Tilero]',e);}return GLib.SOURCE_REMOVE;};id=ms?GLib.timeout_add(GLib.PRIORITY_DEFAULT,ms,run):GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE,run);this._sources.add(id);return id;}
     _cancel(id){if(id&&this._sources.delete(id))GLib.Source.remove(id);}
     _disconnectRecord(r){this._cancel(r.readyId);this._cancel(r.verifyId);this._cancel(r.monitorId);this._cancel(r.stateId);for(const [o,id] of r.signals)try{o.disconnect(id);}catch{}r.signals=[];}
     // Do not run Mutter edge snapping and our own drag/drop placement together.
@@ -75,12 +75,12 @@ export default class AutoTiling {
         settings.set_boolean('edge-tiling',false);
     }
     _restoreNativeEdge(){const saved=this._nativeEdge;this._nativeEdge=null;if(!saved)return;
-        try{if(!saved.settings.get_boolean('edge-tiling')){if(saved.previous)saved.settings.set_value('edge-tiling',saved.previous);else saved.settings.reset('edge-tiling');}}catch(e){console.error('[Auto Tiling] restore edge-tiling',e);}
+        try{if(!saved.settings.get_boolean('edge-tiling')){if(saved.previous)saved.settings.set_value('edge-tiling',saved.previous);else saved.settings.reset('edge-tiling');}}catch(e){console.error('[Tilero] restore edge-tiling',e);}
     }
     _trace(event,r=null,extra={}){
         if(!this._settings?.get_boolean?.('debug-transfers'))return;
         try{const identify=x=>({id:x.w.get_stable_sequence?.(),app:x.w.get_wm_class?.(),owner:x.g?.m??null,actual:x.w.get_monitor(),mode:x.mode,max:x.w.is_maximized(),fullscreen:x.w.is_fullscreen(),minSize:x.w.get_min_size?.(),frame:rect(x.w.get_frame_rect())});
-        console.log(`[Auto Tiling] ${event} ${JSON.stringify({window:r?identify(r):null,...extra})}`);}catch(e){console.warn('[Auto Tiling] diagnostics unavailable',e);}
+        console.log(`[Tilero] ${event} ${JSON.stringify({window:r?identify(r):null,...extra})}`);}catch(e){console.warn('[Tilero] diagnostics unavailable',e);}
     }
     _traceGroups(event,r,groups,extra={}){this._trace(event,r,{...extra,groups:groups.map(g=>({monitor:g.m,windows:g.items.map(x=>({id:x.w.get_stable_sequence?.(),app:x.w.get_wm_class?.(),actual:x.w.get_monitor(),max:x.w.is_maximized(),fullscreen:x.w.is_fullscreen(),frame:rect(x.w.get_frame_rect()),minSize:x.w.get_min_size?.()}))}))});}
     _enabled(){return this._settings.get_boolean('auto-tiling');}
@@ -164,7 +164,7 @@ export default class AutoTiling {
     }
     _detach(r,mode){if(mode!=='closed')this._trace('detach',r,{nextMode:mode});const g=r.g;if(g){const i=g.items.indexOf(r);if(i>=0)g.items.splice(i,1);r.g=null;r.target=null;this._mark(g);}this._cancel(r.verifyId);r.verifyId=0;this._cancel(r.monitorId);r.monitorId=0;r.mode=mode;}
     _forget(r){this._detach(r,'closed');this._disconnectRecord(r);this._records.delete(r.w);if(this._grab?.r===r)this._releaseGrab(this._grab);if(this._lastFocus===r.w)this._lastFocus=null;this._updateHint();}
-    _mark(g){if(!g)return;this._dirty.add(g);if(!this._flushId)this._flushId=this._later(0,()=>{this._flushId=0;const groups=[...this._dirty];this._dirty.clear();for(const group of groups){try{this._layout(group);}catch(e){console.error('[Auto Tiling] layout',e);}}this._updateHint();});}
+    _mark(g){if(!g)return;this._dirty.add(g);if(!this._flushId)this._flushId=this._later(0,()=>{this._flushId=0;const groups=[...this._dirty];this._dirty.clear();for(const group of groups){try{this._layout(group);}catch(e){console.error('[Tilero] layout',e);}}this._updateHint();});}
     _workareasChanged(){
         // Dynamic workspace creation/removal also emits workareas-changed. Do not
         // reapply unrelated layouts unless their actual usable rectangle changed.
@@ -351,11 +351,11 @@ export default class AutoTiling {
         // Extend outward; the remaining stroke overlaps the dark client edge.
         this._hint.set_style(`border-width:${width}px;border-radius:${radius}px;${color}`);const h=hintRect(t,width);this._hint.set_position(h.x,h.y);this._hint.set_size(h.width,h.height);global.window_group.set_child_above_sibling(this._hint,a);this._hint.show();
     }
-    _buildPanel(){this._panel=new PanelMenu.Button(0,'Auto Tiling',false);this._icon=new St.Icon({style_class:'system-status-icon'});this._panel.add_child(this._icon);this._setIcon(0);
+    _buildPanel(){this._panel=new PanelMenu.Button(0,'Tilero',false);this._icon=new St.Icon({style_class:'system-status-icon'});this._panel.add_child(this._icon);this._setIcon(0);
         this._globalSwitch=new PopupMenu.PopupSwitchMenuItem('Auto tiling',this._enabled());this._globalSwitch.connect('toggled',(_o,v)=>this._settings.set_boolean('auto-tiling',v));this._panel.menu.addMenuItem(this._globalSwitch);
         this._workspaceSwitch=new PopupMenu.PopupSwitchMenuItem('Tile this workspace',true);this._workspaceSwitch.connect('toggled',(_o,v)=>{const ws=global.workspace_manager.get_active_workspace();if(v){this._paused.delete(ws);this._resume(ws);}else this._paused.add(ws);this._updateHint();});this._panel.menu.addMenuItem(this._workspaceSwitch);
         this._panel.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());this._panel.menu.addAction('Toggle floating window',()=>this._toggleFloating(this._lastFocus));this._panel.menu.addAction('Ignore active application',()=>{const w=this._lastFocus;if(!w)return;const id=this._ids(w)[0];if(id){const list=this._settings.get_strv('ignored-apps');if(!list.includes(id))this._settings.set_strv('ignored-apps',[...list,id]);}});this._panel.menu.addAction('Settings',()=>this.openPreferences());this._panel.menu.addAction('Reload Extension',()=>this._host.reload());const versionRow=new PopupMenu.PopupMenuItem(`Version ${this.metadata['version-name']}`,{reactive:false,can_focus:false});this._panel.menu.addMenuItem(versionRow);Main.panel.addToStatusArea(this.uuid,this._panel);this._updatePanel();}
     _setIcon(i){if(this._icon){this._icon.gicon=Gio.FileIcon.new(Gio.File.new_for_path(`${this.path}/icons/sweep-${i}-symbolic.svg`));}}
     _pulse(_count){if(!this._motion())return;this._cancel(this._pulseId);let frame=1;const next=()=>{if(!this._icon)return;this._setIcon(frame++);if(frame<=12)this._pulseId=this._later(38,next);else{this._pulseId=0;this._setIcon(0);}};next();}
-    _updatePanel(){if(!this._panel)return;this._globalSwitch.setToggleState(this._enabled());this._workspaceSwitch.setToggleState(!this._paused.has(global.workspace_manager.get_active_workspace()));if(this._enabled())this._icon.remove_style_class_name('auto-tiling-indicator-off');else this._icon.add_style_class_name('auto-tiling-indicator-off');}
+    _updatePanel(){if(!this._panel)return;this._globalSwitch.setToggleState(this._enabled());this._workspaceSwitch.setToggleState(!this._paused.has(global.workspace_manager.get_active_workspace()));if(this._enabled())this._icon.remove_style_class_name('tilero-indicator-off');else this._icon.add_style_class_name('tilero-indicator-off');}
 }

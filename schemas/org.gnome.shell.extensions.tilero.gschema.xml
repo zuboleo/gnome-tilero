@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.auto-tiling" path="/org/gnome/shell/extensions/auto-tiling/">
+  <schema id="org.gnome.shell.extensions.tilero" path="/org/gnome/shell/extensions/tilero/">
     <key name="auto-tiling" type="b">
       <default>true</default>
       <summary>Auto tiling</summary>

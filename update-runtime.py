@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Stage an immutable runtime release, then atomically switch its manifest.
-Only for trusted Auto Tiling ZIPs with an identical bootstrap and schema.
+Only for trusted Tilero ZIPs with an identical bootstrap and schema.
 Run as the desktop user, never with sudo.
 """
 import json
@@ -22,9 +22,9 @@ def install(archive, root):
         if not re.fullmatch(r'\d+\.\d+\.\d+-alpha', version) or release.get('loaderApi') != 1:
             raise ValueError('Unsupported runtime manifest; use a normal installation')
         meta = json.loads(z.read('metadata.json'))
-        if meta['uuid'] != 'auto-tiling@local.dev' or meta['version-name'] != version or meta['version'] != release['build']:
+        if meta['uuid'] != 'tilero@zuboleo.github.io' or meta['version-name'] != version or meta['version'] != release['build']:
             raise ValueError('Unexpected extension or release metadata')
-        for name in ['extension.js', 'stylesheet.css', 'schemas/org.gnome.shell.extensions.auto-tiling.gschema.xml']:
+        for name in ['extension.js', 'stylesheet.css', 'schemas/org.gnome.shell.extensions.tilero.gschema.xml']:
             if (root/name).read_bytes() != z.read(name):
                 raise ValueError(f'{name} changed: normal installation and a session restart required')
         prefix = f'runtime/{version}/'
@@ -58,7 +58,7 @@ def install(archive, root):
                 temp_name=f.name
             os.chmod(temp_name,0o644)
             os.replace(temp_name,root/name)
-        print(f'Staged {version}. Select Reload Extension in the Auto Tiling panel menu.')
+        print(f'Staged {version}. Select Reload Extension in the Tilero panel menu.')
 
 if __name__ == '__main__':
     if len(sys.argv)!=2:

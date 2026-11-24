@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.9-alpha — Tilero rename
+
+- Rename Auto Tiling to Tilero, with UUID `tilero@zuboleo.github.io`.
+- Rename GSettings schema and path, CSS classes, logs, package artifacts and documentation.
+- Existing preferences can be copied with `dconf`; see README.
+- Install normally once before using Tilero hot reload. No layout or window-management behavior changes.
+
 ## 0.1.8-alpha — Hot Reload and appearance
 
 First installation of the stable bootstrap requires one normal session restart.

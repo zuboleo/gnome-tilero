@@ -23,6 +23,6 @@ jobs:
         run: make pack
       - uses: actions/upload-artifact@v4
         with:
-          name: auto-tiling-shell-extension
+          name: tilero-shell-extension
           path: dist/*.shell-extension.zip
           if-no-files-found: error

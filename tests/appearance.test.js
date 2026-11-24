@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {hintOffset,hintRect,effectiveGaps,tiles,resizedRatios,defaultRatios} from '../runtime/0.1.8-alpha/layout.js';
+import {hintOffset,hintRect,effectiveGaps,tiles,resizedRatios,defaultRatios} from '../runtime/0.1.9-alpha/layout.js';
 const a={x:0,y:32,width:1920,height:1048};
 test('outward hint is 1px for width 1–2, 2px for width 3 and higher',()=>{assert.deepEqual([0,1,2,3,4,8,12].map(hintOffset),[0,1,1,2,2,2,2]);});
 test('expanded focus outline covers original frame edge',()=>{assert.deepEqual(hintRect({x:10,y:10,width:100,height:100},3),{x:8,y:8,width:104,height:104});});
