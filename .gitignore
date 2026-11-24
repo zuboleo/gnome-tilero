@@ -1,0 +1,7 @@
+/dist/
+/*.shell-extension.zip
+/schemas/gschemas.compiled
+/node_modules/
+__pycache__/
+*.pyc
+.DS_Store

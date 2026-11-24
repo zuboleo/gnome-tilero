@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='utf-8'?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.auto-tiling" path="/org/gnome/shell/extensions/auto-tiling/">
+    <key name="auto-tiling" type="b">
+      <default>true</default>
+      <summary>Auto tiling</summary>
+    </key>
+    <key name="debug-transfers" type="b">
+      <default>false</default>
+      <summary>Log monitor transfer diagnostics</summary>
+    </key>
+    <key name="outer-gap" type="i">
+      <default>8</default>
+      <range min="0" max="64" />
+      <summary>Outer gap</summary>
+    </key>
+    <key name="inner-gap" type="i">
+      <default>8</default>
+      <range min="0" max="64" />
+      <summary>Inner gap</summary>
+    </key>
+    <key name="active-hint" type="b">
+      <default>true</default>
+      <summary>Active hint</summary>
+    </key>
+    <key name="hint-width" type="i">
+      <default>3</default>
+      <range min="1" max="12" />
+      <summary>Hint width</summary>
+    </key>
+    <key name="hint-radius" type="i">
+      <default>8</default>
+      <range min="0" max="40" />
+      <summary>Hint radius</summary>
+    </key>
+    <key name="hint-color" type="s">
+      <default>'system'</default>
+      <summary>Hint color</summary>
+    </key>
+    <key name="hint-floating" type="b">
+      <default>true</default>
+      <summary>Hint floating</summary>
+    </key>
+    <key name="animate" type="b">
+      <default>true</default>
+      <summary>Animate</summary>
+    </key>
+    <key name="animation-duration" type="i">
+      <default>150</default>
+      <range min="50" max="400" />
+      <summary>Animation duration</summary>
+    </key>
+    <key name="ignored-apps" type="as">
+      <default>[]</default>
+      <summary>Ignored apps</summary>
+    </key>
+    <key name="toggle-tiling" type="as">
+      <default>['&lt;Super&gt;t']</default>
+      <summary>Toggle tiling</summary>
+    </key>
+    <key name="toggle-floating" type="as">
+      <default>['&lt;Super&gt;g']</default>
+      <summary>Toggle floating</summary>
+    </key>
+    <key name="swap-left" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;Left']</default>
+      <summary>Swap left</summary>
+    </key>
+    <key name="swap-right" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;Right']</default>
+      <summary>Swap right</summary>
+    </key>
+    <key name="swap-up" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;Up']</default>
+      <summary>Swap up</summary>
+    </key>
+    <key name="swap-down" type="as">
+      <default>['&lt;Super&gt;&lt;Alt&gt;Down']</default>
+      <summary>Swap down</summary>
+    </key>
+  </schema>
+</schemalist>
