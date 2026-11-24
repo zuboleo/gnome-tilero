@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.12-alpha — remove startup smoothing (unreleased)
+
+- Remove the experimental gradient startup cover, its setting, timers and dedicated tests. Live testing showed that the cover appeared after application flicker and made startup feel worse.
+- Restore the 0.1.10-alpha runtime and settings schema; retain the popup stacking fix, cleanup hardening and standard GNOME entry point.
+- Existing window movement and panel icon animations remain unchanged.
+
 ## 0.1.11-alpha — gradient startup smoothing (unreleased)
 
 - Optional gradient cover for newly tiled windows; theme-aware palette, 400 ms hold, 150 ms fade, 700 ms failsafe. Does not alter client opacity or layout.

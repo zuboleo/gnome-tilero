@@ -33,7 +33,7 @@ def main():
             shutil.copy2(ROOT / name, stage / name)
         target = stage / "runtime"
         target.mkdir()
-        for name in ("extension.js", "layout.js", "startup-cover.js"):
+        for name in ("extension.js", "layout.js"):
             shutil.copy2(ROOT / "runtime" / name, target / name)
         icons = target / "icons"
         icons.mkdir()

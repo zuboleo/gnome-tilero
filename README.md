@@ -1,6 +1,6 @@
 # Tilero
 
-Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current version: **0.1.11-alpha**. No extra runtime dependencies beyond GNOME.
+Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current version: **0.1.12-alpha**. No extra runtime dependencies beyond GNOME.
 
 **Alpha warning:** the geometry and allocator tests pass, JavaScript syntax and GSettings schema have been validated. This release has not been independently validated in a live GNOME Shell 50 / 51 session. Earlier versions have been tested by the user on GNOME 50.6, with outstanding monitor-transfer issues; see the manual checklist. Save work and disable other tilers before enabling it. No GNOME session changes are made by installation itself.
 
@@ -10,7 +10,7 @@ Download the matching `.shell-extension.zip` from a published GitHub release, or
 
 ```sh
 gnome-shell --version
-gnome-extensions install --force ~/Downloads/tilero-0.1.11-alpha.shell-extension.zip
+gnome-extensions install --force ~/Downloads/tilero-0.1.12-alpha.shell-extension.zip
 ```
 
 Log out of GNOME and log back in, then:
@@ -67,7 +67,6 @@ If logs are absent, use `journalctl -b /usr/bin/gnome-shell -f -o cat`. GNOME Lo
 - Drag tiled windows onto other tiles to swap; between monitors to insert (floating if full or incompatible). Native workspace transfers are respected. Maximize/fullscreen reserve tile, minimize frees it; restored window tries saved slot, then another available slot in same workspace, otherwise floating.
 - Focus only changes Active Hint; transient focus follows its parent. Hint is hidden in fullscreen, overview and locked session. Border extends outside the frame with an automatic width-dependent offset, rounded independently from app corners. No clipping or modifications to client corners.
 - Default outer/inner gaps 8 logical px; border 3 px, radius 8 px, system accent color. Floating hints optional. Animation is conservative: compositor translation for synchronous same-size moves; resizing is immediate; panel icon animates when layouts apply. Honors reduced motion.
-- Optional Startup Smoothing covers newly admitted tiled windows with a theme-aware gradient, then fades the cover after 400 ms (150 ms fade, 700 ms safety cap). It never modifies application opacity and cannot detect actual web-page readiness. It is skipped when animations are disabled.
 - Top panel: global and per-workspace toggles, floating toggle, ignore active app, settings. Workspace toggles are session-only.
 
 ## Default shortcuts

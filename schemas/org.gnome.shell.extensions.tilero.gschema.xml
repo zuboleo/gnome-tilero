@@ -45,10 +45,6 @@
       <default>true</default>
       <summary>Animate</summary>
     </key>
-    <key name="startup-smoothing" type="b">
-      <default>true</default>
-      <summary>Gradient startup smoothing</summary>
-    </key>
     <key name="animation-duration" type="i">
       <default>150</default>
       <range min="50" max="400" />

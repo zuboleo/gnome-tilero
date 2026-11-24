@@ -22,7 +22,6 @@ export default class TileroPreferences extends ExtensionPreferences {
         toggle(hint,'hint-floating','Active Hint on Floating Windows');
         const motion=new Adw.PreferencesGroup({title:'Animation',description:'Short translations for same-size window moves. Resizing is immediate.'});page.add(motion);
         toggle(motion,'animate','Animate Window Movement');spin(motion,'animation-duration','Animation Duration (ms)',50,400);
-        toggle(motion,'startup-smoothing','Startup Smoothing','Soft gradient while a new tiled window settles. Respects system animations.');
         const ignorePage=new Adw.PreferencesPage({title:'Ignore List',icon_name:'view-list-symbolic'});window.add(ignorePage);
         const addGroup=new Adw.PreferencesGroup({title:'Add application',description:'Choose an installed app or enter an application ID / WM_CLASS.'});ignorePage.add(addGroup);
         const apps=Gio.AppInfo.get_all().filter(a=>a.should_show()&&a.get_id()).sort((a,b)=>a.get_display_name().localeCompare(b.get_display_name()));

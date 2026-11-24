@@ -67,7 +67,3 @@ Not executed in the build environment. Test with all other tilers disabled and W
 ## 0.1.10 popup regression
 - [ ] On GTK apps, open a menu crossing the focus border, move pointer between submenus and close it. The menu must stay above the hint; normal hint appearance returns without retile or focus change. Repeat on floating windows, context menus, Chromium and XWayland.
 - [ ] Install with standard GNOME tooling; confirm no reload menu or updater in either archive.
-
-## 0.1.11 gradient startup smoothing
-- [ ] Open Teams PWA, Chromium, terminal and GTK apps with smoothing on/off. Verify gradient and fade, no extra tiles or focus changes. The effect starts at admission, not process launch; it is not a web readiness signal.
-- [ ] During the effect, open a popup, switch workspace, minimize, drag, lock, disable Tilero, or turn off system animations. No leftover cover or invisible window. Try several windows in succession. Verify light/dark theme and fractional scaling.
