@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.11-alpha — gradient startup smoothing (unreleased)
+
+- Optional gradient cover for newly tiled windows; theme-aware palette, 400 ms hold, 150 ms fade, 700 ms failsafe. Does not alter client opacity or layout.
+- Cancel on popup/dialog, workspace change, minimize, drag, disable, or animation preference change.
+- Actual application readiness and first visible frame are not guaranteed; verify Teams PWA on GNOME 50/51.
+
 ## 0.1.10-alpha — publication preparation (unreleased)
 
 - Remove experimental Hot Reload entirely; standard GNOME install/update only.

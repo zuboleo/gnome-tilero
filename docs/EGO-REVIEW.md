@@ -26,3 +26,5 @@ References:
 - https://mutter.gnome.org/meta/
 
 - Popup stacking: use Mutter restacked and actor child changes to schedule a hint-only refresh. Lower hint below its owner for overlapping mapped popup windows; real GTK/Wayland validation still required.
+
+- 0.1.11 adds optional startup cosmetics using only extension-owned St actors, bounded GLib timers and Clutter transitions. Check actual actor stacking, system animation settings and cleanup on GNOME 50/51 before submission.

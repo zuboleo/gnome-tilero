@@ -6,8 +6,8 @@
     "50",
     "51"
   ],
-  "version": 10,
-  "version-name": "0.1.10-alpha",
+  "version": 11,
+  "version-name": "0.1.11-alpha",
   "settings-schema": "org.gnome.shell.extensions.tilero",
   "url": "https://github.com/zuboleo/gnome-tilero"
 }

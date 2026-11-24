@@ -7,6 +7,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {StartupCover} from './startup-cover.js';
 import {LIMIT, defaultRatios, monitorOrder, candidates, tiles, contains, sameRect, directionalIndex, resizedRatios, effectiveGaps, hintRect} from './layout.js';
 
 const KEYS=['toggle-tiling','toggle-floating','swap-left','swap-right','swap-up','swap-down'];
@@ -19,7 +20,7 @@ export default class Tilero {
         this._settings=this.getSettings(); this._tracker=Shell.WindowTracker.get_default();
         this._records=new Map(); this._groups=new Map(); this._paused=new Set();
         this._signals=[]; this._sources=new Set(); this._dirty=new Set(); this._keys=[]; this._animations=new Map();
-        this._alive=true; this._nativeEdge=null; this._grab=null; this._lastFocus=null; this._flushId=0; this._pulseId=0; this._hintRestackId=0;
+        this._covers=new Map(); this._alive=true; this._nativeEdge=null; this._grab=null; this._lastFocus=null; this._flushId=0; this._pulseId=0; this._hintRestackId=0;
         try {
             this._hint=new St.Widget({style_class:'tilero-hint',reactive:false,can_focus:false,visible:false});
             global.window_group.add_child(this._hint);
@@ -35,11 +36,13 @@ export default class Tilero {
             this._connect(global.display,'grab-op-end',(_d,w)=>this._grabEnd(w));
             this._connect(global.display,'window-entered-monitor',(_d,_m,w)=>this._monitorChanged(w));
             this._connect(global.display,'workareas-changed',()=>this._workareasChanged());
-            this._connect(global.workspace_manager,'active-workspace-changed',()=>{this._updatePanel();this._updateHint();});
+            this._connect(global.workspace_manager,'active-workspace-changed',()=>{this._clearStartupCovers();this._updatePanel();this._updateHint();});
             this._connect(global.workspace_manager,'workspace-removed',()=>this._prune());
-            this._connect(Main.overview,'showing',()=>this._hint.hide());
+            this._connect(Main.overview,'showing',()=>{this._clearStartupCovers();this._hint.hide();});
             this._connect(Main.overview,'hidden',()=>this._updateHint());
-            this._connect(Main.sessionMode,'updated',()=>this._updateHint());
+            this._connect(Main.sessionMode,'updated',()=>{if(Main.sessionMode.isLocked)this._clearStartupCovers();this._updateHint();});
+            this._connect(St.Settings.get(),'notify::enable-animations',()=>{if(!this._motion())this._clearStartupCovers();});
+            if(St.ReducedMotion!==undefined)this._connect(St.Settings.get(),'notify::reduced-motion',()=>{if(!this._motion())this._clearStartupCovers();});
             this._connect(this._settings,'changed',(_s,key)=>this._settingChanged(key));
             const actions=[()=>this._settings.set_boolean('auto-tiling',!this._enabled()),()=>this._toggleFloating(global.display.focus_window),()=>this._swapDirection(-1,0),()=>this._swapDirection(1,0),()=>this._swapDirection(0,-1),()=>this._swapDirection(0,1)];
             KEYS.forEach((key,i)=>{Main.wm.addKeybinding(key,this._settings,Meta.KeyBindingFlags.NONE,Shell.ActionMode.NORMAL,actions[i]);this._keys.push(key);});
@@ -51,6 +54,7 @@ export default class Tilero {
     }
     disable() {
         this._alive = false;
+        this._clearStartupCovers();
 
         // A failure in one cleanup step must not leave the others registered.
         const cleanup = (label, fn) => {
@@ -154,11 +158,11 @@ export default class Tilero {
         return null;}
     _clearPlacement(r){this._cancel(r.verifyId);r.verifyId=0;this._cancel(r.monitorId);r.monitorId=0;r.target=null;}
     _watch(w,existing){if(!w||this._records.has(w))return;
-        const r={w,workspace:w.get_workspace(),signals:[],g:null,mode:'pending',saved:null,target:null,readyId:0,verifyId:0,monitorId:0,stateId:0};this._records.set(w,r);
+        const r={w,newWindow:!existing,workspace:w.get_workspace(),signals:[],g:null,mode:'pending',saved:null,target:null,readyId:0,verifyId:0,monitorId:0,stateId:0};this._records.set(w,r);
         this._connect(w,'unmanaged',()=>this._forget(r),r);
         this._connect(w,'workspace-changed',()=>this._workspaceChanged(r),r);
         for(const s of ['notify::minimized','notify::fullscreen','notify::maximized-horizontally','notify::maximized-vertically'])this._connect(w,s,()=>this._queueState(r),r);
-        for(const s of ['position-changed','size-changed'])this._connect(w,s,()=>{if(this._focusRoot()===w)this._updateHint();else if(this._isPopup(w))this._queueHintRestack();},r);
+        for(const s of ['position-changed','size-changed'])this._connect(w,s,()=>{this._refreshStartupCovers();if(this._focusRoot()===w)this._updateHint();else if(this._isPopup(w))this._queueHintRestack();},r);
         for(const s of ['notify::window-type','notify::skip-taskbar','notify::wm-class','notify::on-all-workspaces','notify::transient-for'])this._connect(w,s,()=>this._queueState(r),r);
         if(existing){this._admit(r);return;}
         // Waiting for the mapped actor avoids classifying an unfinished transient as a normal window.
@@ -180,7 +184,8 @@ export default class Tilero {
             this._trace('admit-unmaximize',r,{attempt:r.admitAttempts});w.unmaximize();
             r.readyId=this._later(120,()=>this._admit(r));return;
         }
-        this._allocate(r);}
+        const isNew=r.newWindow;r.newWindow=false;
+        if(this._allocate(r)&&isNew)this._startStartupCover(r);}
     _allocate(r,preferred=null,index=null){const ws=r.w.get_workspace();r.workspace=ws;if(!this._active(ws)||!this._eligible(r.w)||r.w.minimized||this._special(r.w))return false;
         const order=this._order(ws);let list=candidates(order,m=>this._group(ws,m,false)?.items.length??0);
         if(preferred!==null&&order.includes(preferred))list=[preferred,...list.filter(m=>m!==preferred)];
@@ -188,7 +193,7 @@ export default class Tilero {
             g.items=items;r.g=g;r.mode='tiled';r.saved=null;this._trace('allocate',r);this._mark(g);return true;}
         r.mode='floating';r.saved=null;this._trace('allocate-floating',r,{reason:'no-compatible-tile'});return false;
     }
-    _detach(r,mode){if(mode!=='closed')this._trace('detach',r,{nextMode:mode});const g=r.g;if(g){const i=g.items.indexOf(r);if(i>=0)g.items.splice(i,1);r.g=null;r.target=null;this._mark(g);}this._cancel(r.verifyId);r.verifyId=0;this._cancel(r.monitorId);r.monitorId=0;r.mode=mode;}
+    _detach(r,mode){this._removeStartupCover(r);if(mode!=='closed')this._trace('detach',r,{nextMode:mode});const g=r.g;if(g){const i=g.items.indexOf(r);if(i>=0)g.items.splice(i,1);r.g=null;r.target=null;this._mark(g);}this._cancel(r.verifyId);r.verifyId=0;this._cancel(r.monitorId);r.monitorId=0;r.mode=mode;}
     _forget(r){this._detach(r,'closed');this._disconnectRecord(r);this._records.delete(r.w);if(this._grab?.r===r)this._releaseGrab(this._grab);if(this._lastFocus===r.w)this._lastFocus=null;this._updateHint();}
     _mark(g){if(!g)return;this._dirty.add(g);if(!this._flushId)this._flushId=this._later(0,()=>{this._flushId=0;const groups=[...this._dirty];this._dirty.clear();for(const group of groups){try{this._layout(group);}catch(e){console.error('[Tilero] layout',e);}}this._updateHint();});}
     _workareasChanged(){
@@ -237,7 +242,7 @@ export default class Tilero {
                 if(actual.width>t.width+4||actual.height>t.height+4)this._detach(r,'floating');
             }else this._trace('verify-ok',r,{target:t});this._updateHint();});
         // A short compositor translation only for same-size moves. No scale or clone of live clients.
-        if(this._motion()&&gActive(r.g)&&old.width===t.width&&old.height===t.height){const a=w.get_compositor_private();if(a&&sameRect(rect(w.get_frame_rect()),t,4)&&!a.get_transition('translation-x')&&!a.get_transition('translation-y')&&a.translation_x===0&&a.translation_y===0){
+        if(!this._covers?.has(r)&&this._motion()&&gActive(r.g)&&old.width===t.width&&old.height===t.height){const a=w.get_compositor_private();if(a&&sameRect(rect(w.get_frame_rect()),t,4)&&!a.get_transition('translation-x')&&!a.get_transition('translation-y')&&a.translation_x===0&&a.translation_y===0){
             a.translation_x=old.x-t.x;a.translation_y=old.y-t.y;this._animations.set(a,true);
             a.ease({translation_x:0,translation_y:0,duration:this._settings.get_int('animation-duration'),mode:Clutter.AnimationMode.EASE_OUT_QUAD,onStopped:()=>this._animations?.delete(a)});
         }}
@@ -245,7 +250,7 @@ export default class Tilero {
     }
     _stopAnimation(a){try{a.remove_transition('translation-x');a.remove_transition('translation-y');a.translation_x=0;a.translation_y=0;}catch{}this._animations.delete(a);}
     _queueState(r){this._cancel(r.stateId);r.stateId=this._later(50,()=>{r.stateId=0;this._stateChanged(r);});}
-    _stateChanged(r){if(r.mode==='pending'||r.mode==='closed'||this._grab?.r===r)return;const w=r.w;
+    _stateChanged(r){if(r.w.minimized||this._special(r.w))this._removeStartupCover(r);if(r.mode==='pending'||r.mode==='closed'||this._grab?.r===r)return;const w=r.w;
         if(w.get_workspace()!== (r.g?.ws??r.workspace))this._workspaceChanged(r);
         if(!this._eligible(w)){if(r.g)this._detach(r,'excluded');else r.mode='excluded';this._updateHint();return;}
         if(w.minimized){if(r.g){r.saved={ws:r.g.ws,m:r.g.m,index:r.g.items.indexOf(r)};this._detach(r,'minimized');}this._updateHint();return;}
@@ -254,6 +259,7 @@ export default class Tilero {
         this._updateHint();
     }
     _workspaceChanged(r){
+        this._removeStartupCover(r);
         if(r.mode==='closed')return;
         const w=r.w,ws=w.get_workspace(),src=r.g,previous=src?.ws??r.workspace;
         // Native monitor changes may emit this signal without a workspace move.
@@ -332,7 +338,7 @@ export default class Tilero {
         this._later(180,()=>{if(r.g===dst){this._mark(src);this._mark(dst);this._traceGroups('transfer-settled',r,[src,dst]);}});
         return true;
     }
-    _grabBegin(w,op){const r=this._records.get(w);if(!r?.g||!this._active(r.g.ws)){this._trace('grab-ignored',r??null,{op,reason:'not-tiled'});return;}
+    _grabBegin(w,op){const r=this._records.get(w);this._removeStartupCover(r);if(!r?.g||!this._active(r.g.ws)){this._trace('grab-ignored',r??null,{op,reason:'not-tiled'});return;}
         this._cancel(r.verifyId);r.verifyId=0;this._cancel(r.monitorId);r.monitorId=0;
         if(this._grab)this._releaseGrab(this._grab);
         this._grab={r,op,old:rect(w.get_frame_rect()),g:r.g,deferred:new Set()};
@@ -368,15 +374,109 @@ export default class Tilero {
         else if(k==='ignored-apps'){for(const r of this._records.values()){if(r.g&&this._ignored(r.w))this._detach(r,'excluded');}}
         else if(['outer-gap','inner-gap','hint-width','active-hint'].includes(k))for(const m of this._groups.values())for(const g of m.values())this._mark(g);
         if(k==='animate'&&!this._motion()){this._cancel(this._pulseId);this._pulseId=0;this._setIcon(0);}
+        if(k==='startup-smoothing'||k==='animate'||k==='auto-tiling')this._refreshStartupCovers();
         this._updateHint();}
     _focusRoot(){let w=global.display.focus_window;const seen=new Set();while(w&&!seen.has(w)){seen.add(w);const p=w.get_transient_for();if(!p)break;w=p;}return w;}
-    _focusChanged(){const w=this._focusRoot();if(w&&this._normal(w))this._lastFocus=w;this._updateHint();}
+    _focusChanged(){this._refreshStartupCovers();const w=this._focusRoot();if(w&&this._normal(w))this._lastFocus=w;this._updateHint();}
+    // Startup cosmetics never modify the application actor, layout or focus.
+    _startupAllowed(r) {
+        const w = r?.w;
+        return Boolean(r?.g && r.mode === 'tiled' && this._alive &&
+            this._settings.get_boolean('startup-smoothing') && this._motion() &&
+            this._active(r.g.ws) && r.g.ws === global.workspace_manager.get_active_workspace() &&
+            !Main.overview.visible && !Main.sessionMode.isLocked &&
+            !w.minimized && !this._special(w) && this._eligible(w) &&
+            w.get_workspace() === r.g.ws && w.showing_on_its_workspace());
+    }
+
+    _startStartupCover(r) {
+        if (!this._startupAllowed(r) || this._covers.has(r))
+            return;
+        const actor = r.w.get_compositor_private();
+        if (!actor?.mapped || actor.get_parent() !== global.window_group)
+            return;
+        let cover;
+        try {
+            cover = new StartupCover({
+                group: global.window_group,
+                actor,
+                radius: this._settings.get_int('hint-radius'),
+                light: St.Settings.get().color_scheme === St.SystemColorScheme?.PREFER_LIGHT,
+                later: (ms, fn) => this._later(ms, fn),
+                cancel: id => this._cancel(id),
+                finish: () => this._removeStartupCover(r),
+            });
+            this._covers.set(r, cover);
+            if (!this._refreshStartupCover(r, cover))
+                return;
+            cover.start();
+        } catch (error) {
+            this._removeStartupCover(r);
+            cover?.destroy();
+            console.error('[Tilero] startup smoothing', error);
+        }
+    }
+
+    _refreshStartupCover(r, cover) {
+        if (!this._startupAllowed(r) || r.w.get_compositor_private() !== cover.actor ||
+            !cover.actor.mapped || cover.actor.get_parent() !== global.window_group) {
+            this._removeStartupCover(r);
+            return false;
+        }
+        const focused = global.display.focus_window;
+        // Do not cover a newly opened dialog, or an app the user switched away from.
+        if (focused && focused !== r.w) {
+            this._removeStartupCover(r);
+            return false;
+        }
+        const frame = rect(r.w.get_frame_rect());
+        const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x &&
+            a.y < b.y + b.height && a.y + a.height > b.y;
+        if (global.get_window_actors().some(a => a !== cover.actor && a.mapped &&
+            a.meta_window && (this._isPopup(a.meta_window) || a.meta_window.get_transient_for()) &&
+            overlaps(frame, a.meta_window.get_frame_rect()))) {
+            this._removeStartupCover(r);
+            return false;
+        }
+        cover.update(frame, this._hint);
+        return true;
+    }
+
+    _refreshStartupCovers() {
+        for (const [r, cover] of this._covers ?? []) {
+            try {
+                this._refreshStartupCover(r, cover);
+            } catch (error) {
+                this._removeStartupCover(r);
+                console.error('[Tilero] startup smoothing refresh', error);
+            }
+        }
+    }
+
+    _removeStartupCover(r) {
+        const cover = this._covers?.get(r);
+        if (!cover)
+            return;
+        this._covers.delete(r);
+        try {
+            cover.destroy();
+        } catch (error) {
+            console.error('[Tilero] startup smoothing cleanup', error);
+        }
+    }
+
+    _clearStartupCovers() {
+        for (const r of [...(this._covers?.keys() ?? [])])
+            this._removeStartupCover(r);
+    }
+
     _queueHintRestack() {
         if (this._hintRestackId || !this._alive)
             return;
         // Mutter may emit restacked before the actor stack has settled.
         this._hintRestackId = this._later(0, () => {
             this._hintRestackId = 0;
+            this._refreshStartupCovers();
             this._updateHint();
         });
     }
@@ -412,7 +512,7 @@ export default class Tilero {
     }
     _buildPanel(){this._panel=new PanelMenu.Button(0,'Tilero',false);this._icon=new St.Icon({style_class:'system-status-icon'});this._panel.add_child(this._icon);this._setIcon(0);
         this._globalSwitch=new PopupMenu.PopupSwitchMenuItem('Auto tiling',this._enabled());this._connect(this._globalSwitch,'toggled',(_o,v)=>this._settings.set_boolean('auto-tiling',v));this._panel.menu.addMenuItem(this._globalSwitch);
-        this._workspaceSwitch=new PopupMenu.PopupSwitchMenuItem('Tile this workspace',true);this._connect(this._workspaceSwitch,'toggled',(_o,v)=>{const ws=global.workspace_manager.get_active_workspace();if(v){this._paused.delete(ws);this._resume(ws);}else this._paused.add(ws);this._updateHint();});this._panel.menu.addMenuItem(this._workspaceSwitch);
+        this._workspaceSwitch=new PopupMenu.PopupSwitchMenuItem('Tile this workspace',true);this._connect(this._workspaceSwitch,'toggled',(_o,v)=>{const ws=global.workspace_manager.get_active_workspace();if(v){this._paused.delete(ws);this._resume(ws);}else this._paused.add(ws);this._refreshStartupCovers();this._updateHint();});this._panel.menu.addMenuItem(this._workspaceSwitch);
         this._panel.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());this._panel.menu.addAction('Toggle floating window',()=>this._toggleFloating(this._lastFocus));this._panel.menu.addAction('Ignore active application',()=>{const w=this._lastFocus;if(!w)return;const id=this._ids(w)[0];if(id){const list=this._settings.get_strv('ignored-apps');if(!list.includes(id))this._settings.set_strv('ignored-apps',[...list,id]);}});this._panel.menu.addAction('Settings',()=>this.openPreferences());const versionRow=new PopupMenu.PopupMenuItem(`Version ${this.metadata['version-name']}`,{reactive:false,can_focus:false});this._panel.menu.addMenuItem(versionRow);Main.panel.addToStatusArea(this.uuid,this._panel);this._updatePanel();}
     _setIcon(i){if(this._icon){this._icon.gicon=Gio.FileIcon.new(Gio.File.new_for_path(`${this.path}/icons/sweep-${i}-symbolic.svg`));}}
     _pulse(_count){if(!this._motion())return;this._cancel(this._pulseId);let frame=1;const next=()=>{if(!this._icon)return;this._setIcon(frame++);if(frame<=12)this._pulseId=this._later(38,next);else{this._pulseId=0;this._setIcon(0);}};next();}
