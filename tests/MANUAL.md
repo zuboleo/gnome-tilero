@@ -67,3 +67,7 @@ Not executed in the build environment. Test with all other tilers disabled and W
 ## 0.1.10 popup regression
 - [ ] On GTK apps, open a menu crossing the focus border, move pointer between submenus and close it. The menu must stay above the hint; normal hint appearance returns without retile or focus change. Repeat on floating windows, context menus, Chromium and XWayland.
 - [ ] Install with standard GNOME tooling; confirm no reload menu or updater in either archive.
+
+## 0.1.13 Active Hint boundary regression
+- [ ] Maximize/restore a normal tiled and floating window on each monitor; the outline remains inside the work area, including below the top panel.
+- [ ] Drag a floating window partially outside a monitor; the outline is bounded, and its normal offset returns when the window moves back. Repeat on a monitor with negative coordinates and zero outer gap. Check popup stacking and ordinary 8 px gaps remain correct.

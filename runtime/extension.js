@@ -33,8 +33,8 @@ export default class Tilero {
             this._connect(global.window_group,'child-removed',()=>this._queueHintRestack());
             this._connect(global.display,'grab-op-begin',(_d,w,op)=>this._grabBegin(w,op));
             this._connect(global.display,'grab-op-end',(_d,w)=>this._grabEnd(w));
-            this._connect(global.display,'window-entered-monitor',(_d,_m,w)=>this._monitorChanged(w));
-            this._connect(global.display,'workareas-changed',()=>this._workareasChanged());
+            this._connect(global.display,'window-entered-monitor',(_d,_m,w)=>{this._monitorChanged(w);if(this._focusRoot()===w)this._queueHintRestack();});
+            this._connect(global.display,'workareas-changed',()=>{this._workareasChanged();this._queueHintRestack();});
             this._connect(global.workspace_manager,'active-workspace-changed',()=>{this._updatePanel();this._updateHint();});
             this._connect(global.workspace_manager,'workspace-removed',()=>this._prune());
             this._connect(Main.overview,'showing',()=>this._hint.hide());
@@ -407,8 +407,25 @@ export default class Tilero {
     _updateHint(){if(!this._hint)return;const w=this._focusRoot(),r=this._records.get(w);if(!w||!this._normal(w)||!this._active(w.get_workspace())||!this._settings.get_boolean('active-hint')||Main.overview.visible||Main.sessionMode.isLocked||w.minimized||w.is_fullscreen()||(!r?.g&&!this._settings.get_boolean('hint-floating'))||!w.showing_on_its_workspace()){this._hint.hide();return;}
         const a=w.get_compositor_private();if(!a||a.get_parent()!==global.window_group){this._hint.hide();return;}
         const t=w.get_frame_rect(),width=this._settings.get_int('hint-width'),radius=this._settings.get_int('hint-radius'),c=this._settings.get_string('hint-color');const color=/^#[0-9a-f]{6}$/i.test(c)?`border-color:${c};`:'';
-        // Extend outward; the remaining stroke overlaps the dark client edge.
-        this._hint.set_style(`border-width:${width}px;border-radius:${radius}px;${color}`);const h=hintRect(t,width);this._hint.set_position(h.x,h.y);this._hint.set_size(h.width,h.height);this._stackHint(a,h);this._hint.show();
+        // Use Mutter's actual monitor, not the tile's assigned monitor: they
+        // can temporarily differ during a grab or asynchronous Wayland resize.
+        const monitor = w.get_monitor();
+        const workspace = w.get_workspace();
+        if (!workspace || monitor < 0 || monitor >= global.display.get_n_monitors()) {
+            this._hint.hide();
+            return;
+        }
+        const area = workspace.get_work_area_for_monitor(monitor);
+        const h = area ? hintRect(t, width, area) : null;
+        if (!h) {
+            this._hint.hide();
+            return;
+        }
+        this._hint.set_style(`border-width:${width}px;border-radius:${radius}px;${color}`);
+        this._hint.set_position(h.x,h.y);
+        this._hint.set_size(h.width,h.height);
+        this._stackHint(a,h);
+        this._hint.show();
     }
     _buildPanel(){this._panel=new PanelMenu.Button(0,'Tilero',false);this._icon=new St.Icon({style_class:'system-status-icon'});this._panel.add_child(this._icon);this._setIcon(0);
         this._globalSwitch=new PopupMenu.PopupSwitchMenuItem('Auto tiling',this._enabled());this._connect(this._globalSwitch,'toggled',(_o,v)=>this._settings.set_boolean('auto-tiling',v));this._panel.menu.addMenuItem(this._globalSwitch);

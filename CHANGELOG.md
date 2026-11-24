@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.13-alpha — bounded Active Hint (unreleased)
+
+- Clamp the focus outline to the actual monitor's work area, including maximized and partially offscreen windows. Keep the normal outward offset on unaffected edges.
+- Refresh the hint when work areas or the focused window's actual monitor change. Hide it if the monitor or visible rectangle is invalid.
+- Leave window geometry, layout gaps, and popup stacking unchanged.
+
 ## 0.1.12-alpha — remove startup smoothing (unreleased)
 
 - Remove the experimental gradient startup cover, its setting, timers and dedicated tests. Live testing showed that the cover appeared after application flicker and made startup feel worse.

@@ -1,6 +1,6 @@
 # Tilero
 
-Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current version: **0.1.12-alpha**. No extra runtime dependencies beyond GNOME.
+Monitor-first automatic tiling for GNOME Shell 50 / 51 on Wayland. Current version: **0.1.13-alpha**. No extra runtime dependencies beyond GNOME.
 
 **Alpha warning:** the geometry and allocator tests pass, JavaScript syntax and GSettings schema have been validated. This release has not been independently validated in a live GNOME Shell 50 / 51 session. Earlier versions have been tested by the user on GNOME 50.6, with outstanding monitor-transfer issues; see the manual checklist. Save work and disable other tilers before enabling it. No GNOME session changes are made by installation itself.
 
@@ -10,7 +10,7 @@ Download the matching `.shell-extension.zip` from a published GitHub release, or
 
 ```sh
 gnome-shell --version
-gnome-extensions install --force ~/Downloads/tilero-0.1.12-alpha.shell-extension.zip
+gnome-extensions install --force ~/Downloads/tilero-0.1.13-alpha.shell-extension.zip
 ```
 
 Log out of GNOME and log back in, then:

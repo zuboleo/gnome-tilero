@@ -99,3 +99,39 @@ test('overlapping mapped popup is above the focus hint; close restores normal la
     runtime._stackHint(owner, frame);
     assert.deepEqual(calls.map(c => c[0]), ['below', 'above', 'above']);
 });
+
+test('focus hint uses actual monitor instead of assigned tile monitor', async()=>{
+    const {hintRect}=await import('../runtime/layout.js');
+    const calls=[];
+    const group={};
+    const actor={get_parent:()=>group};
+    let monitor=1;
+    const workspace={get_work_area_for_monitor(m){
+        calls.push(['area',m]);
+        return {x:1920,y:32,width:1920,height:1048};
+    }};
+    const w={
+        get_workspace:()=>workspace, get_monitor:()=>monitor,
+        get_frame_rect:()=>({x:1920,y:32,width:800,height:600}),
+        get_compositor_private:()=>actor, minimized:false,
+        is_fullscreen:()=>false, showing_on_its_workspace:()=>true,
+    };
+    const Runtime=readClass('../runtime/extension.js','Tilero',{
+        Main:{overview:{visible:false},sessionMode:{isLocked:false}},
+        global:{window_group:group,display:{get_n_monitors:()=>2}},
+        hintRect,
+    });
+    const r=new Runtime();
+    Object.assign(r,{
+        _focusRoot:()=>w, _records:new Map([[w,{g:{m:0}}]]),
+        _normal:()=>true,_active:()=>true,_stackHint:()=>{},
+        _settings:{get_boolean:()=>true,get_int:k=>k==='hint-width'?3:8,get_string:()=> 'system'},
+        _hint:{set_style(){},set_position(x,y){calls.push(['position',x,y]);},
+            set_size(w,h){calls.push(['size',w,h]);},show(){calls.push(['show']);},hide(){calls.push(['hide']);}},
+    });
+    r._updateHint();
+    assert.deepEqual(calls,[['area',1],['position',1920,32],['size',802,602],['show']]);
+    monitor=-1;
+    r._updateHint();
+    assert.deepEqual(calls.at(-1),['hide']);
+});
